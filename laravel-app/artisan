@@ -1,0 +1,65 @@
+#!/usr/bin/env php
+<?php
+
+if (PHP_SAPI === 'cli' && !getenv('DBEAUTY_SQLITE_BOOTSTRAPPED')) {
+    $candidates = [
+        __DIR__ . '/vendor/php-extensions/usr/lib/php/20230831',
+        dirname(__DIR__) . '/vendor/php-extensions/usr/lib/php/20230831',
+    ];
+
+    $extensionDir = null;
+    foreach ($candidates as $candidate) {
+        if (is_dir($candidate)) {
+            $extensionDir = $candidate;
+            break;
+        }
+    }
+
+    if ($extensionDir === null) {
+        goto LARAVEL_ARTISAN_BOOTSTRAP;
+    }
+    $extensions = [
+        'pdo_sqlite' => $extensionDir . '/pdo_sqlite.so',
+        'sqlite3' => $extensionDir . '/sqlite3.so',
+    ];
+
+    $missingExtensions = array_filter(array_keys($extensions), static function ($extension) {
+        return !extension_loaded($extension);
+    });
+
+    if (!empty($missingExtensions)) {
+        $cmd = [escapeshellarg(PHP_BINARY)];
+        foreach ($extensions as $extension => $path) {
+            if (is_file($path)) {
+                $cmd[] = '-d';
+                $cmd[] = escapeshellarg('extension=' . $path);
+            }
+        }
+        $cmd[] = escapeshellarg(__FILE__);
+        foreach (array_slice($argv ?? [], 1) as $arg) {
+            $cmd[] = escapeshellarg($arg);
+        }
+
+        $command = 'DBEAUTY_SQLITE_BOOTSTRAPPED=1 ' . implode(' ', $cmd);
+        passthru($command, $exitCode);
+        exit($exitCode);
+    }
+}
+
+LARAVEL_ARTISAN_BOOTSTRAP:
+
+use Illuminate\Foundation\Application;
+use Symfony\Component\Console\Input\ArgvInput;
+
+define('LARAVEL_START', microtime(true));
+
+// Register the Composer autoloader...
+require __DIR__.'/vendor/autoload.php';
+
+// Bootstrap Laravel and handle the command...
+/** @var Application $app */
+$app = require_once __DIR__.'/bootstrap/app.php';
+
+$status = $app->handleCommand(new ArgvInput);
+
+exit($status);
