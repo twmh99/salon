@@ -4,14 +4,18 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+APP_DIR="${ROOT_DIR}/laravel-app"
 HOST="${HOST:-127.0.0.1}"
 PORT="${PORT:-8000}"
-DOCROOT="${ROOT_DIR}"
-SCHEMA_FILE="${ROOT_DIR}/database/dbeauty_schema.sql"
 EXT_DIR="${ROOT_DIR}/vendor/php-extensions/usr/lib/php/20230831"
 
 if ! command -v php >/dev/null 2>&1; then
     echo "Error: PHP belum terpasang pada PATH. Silakan instal PHP 8+ terlebih dahulu." >&2
+    exit 1
+fi
+
+if [ ! -f "${APP_DIR}/artisan" ]; then
+    echo "Error: Proyek Laravel belum ditemukan di ${APP_DIR}. Pastikan folder laravel-app tersedia." >&2
     exit 1
 fi
 
@@ -28,19 +32,15 @@ fi
 
 cat <<INFO
 ========================================
-DBeauty Skincare & Day Spa Dev Server
+DBeauty Skincare & Day Spa (Laravel) Dev Server
 ========================================
-- Backend/Frontend: http://${HOST}:${PORT}
-- Document root   : ${DOCROOT}
-- Default DB      : SQLite -> database/dbeauty.sqlite
-- Schema MySQL    : ${SCHEMA_FILE}
-  (opsional) Import dengan:
-    mysql -u root -p < "${SCHEMA_FILE}"
-
+- URL Aplikasi : http://${HOST}:${PORT}
+- Direktori App: ${APP_DIR}
+- Database     : ${APP_DIR}/database/database.sqlite
 Tekan Ctrl+C untuk menghentikan server.
 INFO
 
-cd "${DOCROOT}"
+cd "${APP_DIR}"
 php -d "extension=${EXT_DIR}/pdo_sqlite.so" \
     -d "extension=${EXT_DIR}/sqlite3.so" \
-    -S "${HOST}:${PORT}" -t "${DOCROOT}"
+    artisan serve --host="${HOST}" --port="${PORT}"
